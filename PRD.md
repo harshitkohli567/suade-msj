@@ -1,6 +1,6 @@
 # Suade.MSJ — Product Requirements Document
 
-**Version:** 0.2 · **Date:** 17 July 2026 · **Status:** Living document — system built; Skill content pending.
+**Version:** 0.3 · **Date:** 17 July 2026 · **Status:** Living document — system and Skill content in place.
 **Relationship to Suade:** Suade.MSJ is a specialized fork of Suade v1.0 (16 July 2026), scoped to a single deliverable — a Motion for Summary Judgment (MSJ) — for a Massachusetts employment lawyer. It inherits Suade's task-pane/backend architecture, document handling, citation model, two-channel output, tracked-changes insertion, and Skill Coach. This PRD specifies only what is new or changed; unmarked behavior is identical to Suade v1.0 (see the parent repo's PRD.md).
 
 Statuses: **[Built]** shipped and verified · **[Placeholder]** system built, lawyer-supplied content pending · **[Planned]**.
@@ -76,8 +76,8 @@ Thumbs, run log, edit-pair corpus incl. post-insert capture: per section run, un
 ### 4.10 Operations & UX chrome — [Built]
 Inherited chrome plus the **section progress rail**: six steps showing not started / drafted (with version) / inserted, a "next" hint on the first undrafted section, stale badges with an explanatory tooltip, and click-to-select wiring into the Skill runner.
 
-### 4.11 Skill content — [Placeholder]
-All six Skills ship as clearly-bannered placeholders: real Non-Negotiable Rules and Guardrails (active now), generic MA-employment process skeletons to be replaced by the lawyer-supplied content per section (banner marks exactly which sections to replace).
+### 4.11 Skill content — [Built]
+The six lawyer-supplied Skills are in place (17 Jul), replacing the launch placeholders. Each follows the lawyer's structure (Steps / Checklist / Domain knowledge / Best practices) and references a system-owned `output-and-context-contract.md` (one copy per skill's `references/`, inlined at run time) that binds the skills to the runtime contract: two-channel output, citation rules, `[AUTHORITY NEEDED]` discipline, prior-section consistency, style-profile form-not-content. **Note:** the lawyer's files define no *Non-Negotiable Rules / Guardrails* headings, so Skill Coach's protected-section mechanism currently protects nothing inside these six Skills — flagged for a decision (add a minimal protected section per Skill, or accept full coachability).
 
 ## 5. Interface inventory (new/changed routes)
 
@@ -106,7 +106,7 @@ Style extraction is heuristic and single-document (no multi-precedent blending).
 
 ## 9. Roadmap
 
-- **Now:** swap in the six lawyer-supplied Skill contents as they arrive; first live-Word walkthrough of the full six-section flow; create the GitHub repo + Render service (with persistent disk from day one).
+- **Now:** first live-Word walkthrough of the full six-section flow; Render service (with persistent disk from day one); decide Skill Coach protection for the six Skills (see 4.11).
 - **Next:** Skill promotion for the MSJ Skills once multiple attorneys share a deployment.
 - **Later:** generalize the section-Skill-sequence pattern to other MA employment motion types; multi-precedent style blending.
 
