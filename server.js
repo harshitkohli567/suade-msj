@@ -93,8 +93,10 @@ const EDIT_PAIRS_LOG_PATH = process.env.SUADE_EDIT_PAIRS_PATH || path.join(__dir
 
 const MSJ_SECTIONS_DIR = process.env.SUADE_MSJ_SECTIONS_DIR || path.join(__dirname, "msj-sections");
 const PRECEDENT_DOCS_DIR = process.env.SUADE_PRECEDENT_DOCS_DIR || path.join(__dirname, "precedent-docs");
+const WORKING_NOTES_DIR = process.env.SUADE_WORKING_NOTES_DIR || path.join(__dirname, "working-notes");
 fs.mkdirSync(MSJ_SECTIONS_DIR, { recursive: true });
 fs.mkdirSync(PRECEDENT_DOCS_DIR, { recursive: true });
+fs.mkdirSync(WORKING_NOTES_DIR, { recursive: true });
 
 /** Canonical section order; skillId = "msj-" + sectionType. Mirrors registry.ts. */
 const MSJ_SECTION_ORDER = [
@@ -163,6 +165,44 @@ function priorSectionDraftsFor(matterId, exceptSectionType) {
     updatedAt: state.sections[t].updatedAt,
     cleanDraft: state.sections[t].cleanDraft,
   }));
+}
+
+function workingNotesDirFor(matterId) {
+  return path.join(WORKING_NOTES_DIR, slugForMatter(matterId));
+}
+
+function readNotesIndex(matterId) {
+  const p = path.join(workingNotesDirFor(matterId), "index.json");
+  if (!fs.existsSync(p)) return [];
+  return JSON.parse(fs.readFileSync(p, "utf8")).notes;
+}
+
+/**
+ * Persists a section run's working-notes .docx so the pane can list and
+ * reopen every run's notes later -- titled
+ * "<Section Name> Working Notes <Timestamp>" (PRD 4.5).
+ */
+function storeWorkingNotes(matterId, sectionType, draftVersion, docxBase64) {
+  const dir = workingNotesDirFor(matterId);
+  fs.mkdirSync(dir, { recursive: true });
+  const noteId = `wn-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const createdAt = new Date();
+  const title = `${MSJ_SECTION_NAMES[sectionType]} Working Notes ${createdAt.toLocaleString("en-GB", {
+    dateStyle: "medium",
+    timeStyle: "medium",
+  })}`;
+  fs.writeFileSync(path.join(dir, `${noteId}.docx`), Buffer.from(docxBase64, "base64"));
+  const notes = readNotesIndex(matterId);
+  notes.push({
+    noteId,
+    title,
+    sectionType,
+    displayName: MSJ_SECTION_NAMES[sectionType],
+    draftVersion,
+    createdAt: createdAt.toISOString(),
+  });
+  fs.writeFileSync(path.join(dir, "index.json"), JSON.stringify({ notes }, null, 2));
+  return { noteId, title };
 }
 
 /** PDF text extraction for precedent docs (pdfjs-dist legacy build, ESM via dynamic import). */
@@ -858,6 +898,16 @@ async function executeSkillRun(runId, { skillId, skillInstructions, matter, sect
       };
       writeMsjSections(matter.matterId, state);
       addTrace(runId, `Saved ${MSJ_SECTION_NAMES[msjContext.sectionType]} draft v${state.sections[msjContext.sectionType].draftVersion}`);
+
+      if (workingNotesDocxBase64) {
+        const stored = storeWorkingNotes(
+          matter.matterId,
+          msjContext.sectionType,
+          state.sections[msjContext.sectionType].draftVersion,
+          workingNotesDocxBase64
+        );
+        addTrace(runId, `Working notes stored: "${stored.title}"`);
+      }
     }
 
     // Minimal Activity Graph record (FR-2.1): which Skill produced which
@@ -1004,14 +1054,35 @@ app.get("/api/msj-sections", (req, res) => {
     });
 
     const style = readStyleProfile(matterId);
+    const notes = readNotesIndex(matterId).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
     res.json({
       matterId,
       sections,
+      notes,
       styleProfile: style ? { filename: style.meta.filename, uploadedAt: style.meta.uploadedAt, profile: style.profile } : null,
     });
   } catch (err) {
     console.error("Suade.MSJ sections error:", err);
     res.status(500).json({ error: err.message || "Unknown error reading section state." });
+  }
+});
+
+/** Retrieves one stored working-notes .docx (base64) for reopening in Word. */
+app.get("/api/msj-notes/file", (req, res) => {
+  try {
+    const { matterId, noteId } = req.query;
+    if (!matterId || typeof matterId !== "string" || !/^wn-[a-z0-9-]+$/.test(String(noteId))) {
+      return res.status(400).json({ error: "matterId and a valid noteId are required." });
+    }
+    const entry = readNotesIndex(matterId).find((n) => n.noteId === noteId);
+    const filePath = path.join(workingNotesDirFor(matterId), `${noteId}.docx`);
+    if (!entry || !fs.existsSync(filePath)) {
+      return res.status(404).json({ error: "Working notes not found." });
+    }
+    res.json({ noteId, title: entry.title, base64: fs.readFileSync(filePath).toString("base64") });
+  } catch (err) {
+    console.error("Suade.MSJ notes-file error:", err);
+    res.status(500).json({ error: err.message || "Unknown error reading working notes." });
   }
 });
 

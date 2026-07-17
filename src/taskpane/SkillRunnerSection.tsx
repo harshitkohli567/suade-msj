@@ -355,6 +355,7 @@ const SkillRunnerSection: React.FC<SkillRunnerSectionProps> = ({
           <MsjPanel
             matterId={matter.matterId}
             sections={msj.sections}
+            notes={msj.notes}
             styleProfile={msj.styleProfile}
             selectedSkillId={selectedSkillId}
             onSelectSkill={setSelectedSkillId}

@@ -27,14 +27,25 @@ export interface StyleProfileInfo {
   profile: string;
 }
 
+export interface WorkingNoteInfo {
+  noteId: string;
+  title: string;
+  sectionType: MsjSectionType;
+  displayName: string;
+  draftVersion: number;
+  createdAt: string;
+}
+
 export function useMsjSections(matterId: string | null) {
   const [sections, setSections] = useState<MsjSectionInfo[]>([]);
+  const [notes, setNotes] = useState<WorkingNoteInfo[]>([]);
   const [styleProfile, setStyleProfile] = useState<StyleProfileInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     if (!matterId) {
       setSections([]);
+      setNotes([]);
       setStyleProfile(null);
       return;
     }
@@ -44,8 +55,13 @@ export function useMsjSections(matterId: string | null) {
         const body = await response.json().catch(() => ({}));
         throw new Error((body as { error?: string }).error || `HTTP ${response.status}`);
       }
-      const data = (await response.json()) as { sections: MsjSectionInfo[]; styleProfile: StyleProfileInfo | null };
+      const data = (await response.json()) as {
+        sections: MsjSectionInfo[];
+        notes: WorkingNoteInfo[];
+        styleProfile: StyleProfileInfo | null;
+      };
       setSections(data.sections);
+      setNotes(data.notes || []);
       setStyleProfile(data.styleProfile);
       setError(null);
     } catch (err) {
@@ -57,5 +73,5 @@ export function useMsjSections(matterId: string | null) {
     void refresh();
   }, [refresh]);
 
-  return { sections, styleProfile, error, refresh };
+  return { sections, notes, styleProfile, error, refresh };
 }

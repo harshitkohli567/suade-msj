@@ -59,7 +59,7 @@ Matter detection/intake, PDF/DOCX/MSG upload, hosted originals: unchanged from S
 Run lifecycle, live activity trace (now also showing prior-section context and style-profile application), transient-error retry, message-only runs: unchanged.
 
 ### 4.5 Two-channel output & working notes — [Built] (inherited, extended)
-Same `<clean_draft>`/`<working_notes>` contract and .docx rendering. **Extension:** working notes end with a backend-appended "Context Used for This Run" section listing each prior section used (name, draft version, timestamp) and whether the style profile applied — deterministic, not model-reported.
+Same `<clean_draft>`/`<working_notes>` contract and .docx rendering. **Extension:** working notes end with a backend-appended "Context Used for This Run" section listing each prior section used (name, draft version, timestamp) and whether the style profile applied — deterministic, not model-reported. **Extension (17 Jul):** every section run's working-notes .docx is also persisted server-side (`working-notes/{matterSlug}/` + index) and listed in the pane under "Working Notes", titled `<Section Name> Working Notes <Timestamp>`, each reopenable in Word at any time — notes are no longer lost when a run is cleared or expires.
 
 ### 4.6 Verifiable citations — [Built] (inherited)
 Same contract as Suade FR-14, applying to case documents. Statute/case-law sourcing conventions belong to the lawyer-supplied Skill content; until then, placeholder Skills forbid invented authority and emit `[AUTHORITY NEEDED: …]` markers.
@@ -86,13 +86,14 @@ The six lawyer-supplied Skills are in place (17 Jul), replacing the launch place
 | `POST /api/precedent-doc` · `DELETE /api/precedent-doc?matterId=` | upload precedent → derive style profile · remove it |
 | `GET /api/msj-sections?matterId=` | status + versions + stale flags + style profile, for the rail and context assembly |
 | `POST /api/msj-sections/mark-inserted` | pane marks a section's draft inserted after a successful Word insert |
+| `GET /api/msj-notes/file?matterId=&noteId=` | one stored working-notes .docx (base64) for reopening in Word |
 | `POST /api/run-skill` (extended) | request includes `sectionType`; backend assembles prior-section + style context automatically |
 
 *(Deviation from PRD v0.1: matter ids contain `/`, so `:matterId` path params became query params.)*
 
 ## 6. Data & storage model
 
-Same pre-database posture. Additions: `msj-sections/{matterSlug}.json`, `precedent-docs/{matterSlug}/`, `skills/personal/{lawyer}/msj-*` (created on first coaching). Env overrides: `SUADE_MSJ_SECTIONS_DIR`, `SUADE_PRECEDENT_DOCS_DIR`.
+Same pre-database posture. Additions: `msj-sections/{matterSlug}.json`, `precedent-docs/{matterSlug}/`, `working-notes/{matterSlug}/` (stored notes + index), `skills/personal/{lawyer}/msj-*` (created on first coaching). Env overrides: `SUADE_MSJ_SECTIONS_DIR`, `SUADE_PRECEDENT_DOCS_DIR`, `SUADE_WORKING_NOTES_DIR`.
 
 > Same critical dependency as Suade: Render's filesystem is ephemeral until a persistent disk is attached. For Suade.MSJ an un-mounted disk additionally wipes in-progress MSJ section state and style profiles on redeploy — raising the stakes on the disk-attach task.
 

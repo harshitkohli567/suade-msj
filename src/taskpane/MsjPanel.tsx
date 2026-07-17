@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { BACKEND_URL } from "./config";
-import { MsjSectionInfo, StyleProfileInfo } from "./hooks/useMsjSections";
+import { MsjSectionInfo, StyleProfileInfo, WorkingNoteInfo } from "./hooks/useMsjSections";
+import { openDocxInNewWindow } from "./office/openDocx";
 
 /**
  * Suade.MSJ chrome: the six-step section progress rail (PRD 4.10) and
@@ -11,6 +12,7 @@ import { MsjSectionInfo, StyleProfileInfo } from "./hooks/useMsjSections";
 interface MsjPanelProps {
   matterId: string;
   sections: MsjSectionInfo[];
+  notes: WorkingNoteInfo[];
   styleProfile: StyleProfileInfo | null;
   selectedSkillId: string;
   onSelectSkill: (skillId: string) => void;
@@ -38,12 +40,16 @@ const STATUS_LABELS: Record<string, string> = {
 const MsjPanel: React.FC<MsjPanelProps> = ({
   matterId,
   sections,
+  notes,
   styleProfile,
   selectedSkillId,
   onSelectSkill,
   refresh,
 }) => {
   const [precedentBusy, setPrecedentBusy] = useState(false);
+  const [notesCollapsed, setNotesCollapsed] = useState(true);
+  const [openingNoteId, setOpeningNoteId] = useState<string | null>(null);
+  const [notesError, setNotesError] = useState<string | null>(null);
   const [precedentError, setPrecedentError] = useState<string | null>(null);
   const [profileCollapsed, setProfileCollapsed] = useState(true);
 
@@ -96,6 +102,26 @@ const MsjPanel: React.FC<MsjPanelProps> = ({
     }
   };
 
+  const handleOpenNote = async (noteId: string) => {
+    setOpeningNoteId(noteId);
+    setNotesError(null);
+    try {
+      const response = await fetch(
+        `${BACKEND_URL}/api/msj-notes/file?matterId=${encodeURIComponent(matterId)}&noteId=${encodeURIComponent(noteId)}`
+      );
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error((body as { error?: string }).error || `HTTP ${response.status}`);
+      }
+      const data = (await response.json()) as { base64: string };
+      await openDocxInNewWindow(data.base64);
+    } catch (err) {
+      setNotesError(err instanceof Error ? err.message : "Unknown error opening working notes.");
+    } finally {
+      setOpeningNoteId(null);
+    }
+  };
+
   return (
     <div>
       <p style={styles.fieldLabel}>Motion Sections</p>
@@ -142,6 +168,38 @@ const MsjPanel: React.FC<MsjPanelProps> = ({
           );
         })}
       </div>
+
+      {notes.length > 0 && (
+        <div style={styles.notesBlock}>
+          <div style={styles.profileHeader}>
+            <span style={styles.fieldLabelInline}>Working Notes ({notes.length})</span>
+            <button style={styles.smallButton} onClick={() => setNotesCollapsed((p) => !p)}>
+              {notesCollapsed ? "Show" : "Hide"}
+            </button>
+          </div>
+          {!notesCollapsed && (
+            <ul style={styles.notesList}>
+              {notes.map((n) => (
+                <li key={n.noteId} style={styles.notesItem}>
+                  <span style={styles.notesTitle}>{n.title}</span>
+                  <button
+                    style={styles.smallButton}
+                    onClick={() => void handleOpenNote(n.noteId)}
+                    disabled={openingNoteId !== null}
+                  >
+                    {openingNoteId === n.noteId ? "Opening…" : "Open"}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {notesError && (
+            <div style={styles.errorBox}>
+              <strong>Working notes error:</strong> {notesError}
+            </div>
+          )}
+        </div>
+      )}
 
       <p style={styles.fieldLabel}>Voice Calibration (optional)</p>
       <p style={styles.helperText}>
@@ -253,6 +311,18 @@ const styles: Record<string, React.CSSProperties> = {
     flexShrink: 0,
   },
   fileInput: { fontSize: "12px" },
+  notesBlock: { marginTop: "10px" },
+  fieldLabelInline: { fontWeight: 700, color: "#5B6470", fontSize: "13px", flex: 1 },
+  notesList: { listStyle: "none", margin: "6px 0 0 0", padding: 0, maxHeight: "180px", overflowY: "auto" },
+  notesItem: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    padding: "4px 0",
+    fontSize: "11.5px",
+    borderBottom: "1px solid #EDEFF2",
+  },
+  notesTitle: { flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
   profileCard: {
     background: "#F5F7FA",
     border: "1px solid #DDE3EA",
