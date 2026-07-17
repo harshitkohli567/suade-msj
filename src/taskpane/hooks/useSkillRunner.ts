@@ -136,5 +136,13 @@ export function useSkillRunner() {
     }
   };
 
-  return { run, output, workingNotes, loading, error, trace };
+  /** Clears the previous run's entire surface (output, notes, trace, error). */
+  const reset = () => {
+    setOutput(null);
+    setWorkingNotes(null);
+    setError(null);
+    setTrace([]);
+  };
+
+  return { run, output, workingNotes, loading, error, trace, reset };
 }
