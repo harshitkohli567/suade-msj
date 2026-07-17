@@ -1,0 +1,58 @@
+{
+  "name": "suade-msj",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Suade.MSJ -- Motion for Summary Judgment drafting assistant for Massachusetts employment lawyers (Word Add-in). Fork of Suade.",
+  "main": "src/taskpane/index.tsx",
+  "scripts": {
+    "build": "webpack --mode production",
+    "build:dev": "webpack --mode development",
+    "dev-server": "webpack serve --mode development",
+    "start": "office-addin-debugging start manifest.xml",
+    "stop": "office-addin-debugging stop manifest.xml",
+    "server": "node server.js",
+    "validate": "office-addin-manifest validate manifest.xml",
+    "lint": "eslint src --ext ts,tsx",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.65.0",
+    "@kenjiuno/msgreader": "^1.28.0",
+    "cors": "^2.8.5",
+    "docx": "^9.7.1",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "mammoth": "^1.12.0",
+    "pdfjs-dist": "^6.1.200",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.24.0",
+    "@types/office-js": "^1.0.377",
+    "@types/react": "^18.2.66",
+    "@types/react-dom": "^18.2.22",
+    "@typescript-eslint/eslint-plugin": "^7.3.1",
+    "@typescript-eslint/parser": "^7.3.1",
+    "copy-webpack-plugin": "^12.0.2",
+    "css-loader": "^6.10.0",
+    "eslint": "^8.57.0",
+    "eslint-plugin-office-addins": "^3.0.2",
+    "eslint-plugin-react": "^7.34.1",
+    "html-webpack-plugin": "^5.6.0",
+    "office-addin-cli": "^1.6.4",
+    "office-addin-debugging": "^5.1.4",
+    "office-addin-dev-certs": "^1.13.4",
+    "office-addin-manifest": "^1.13.4",
+    "source-map-loader": "^5.0.0",
+    "style-loader": "^3.3.4",
+    "ts-loader": "^9.5.1",
+    "typescript": "^5.4.3",
+    "webpack": "^5.91.0",
+    "webpack-cli": "^5.1.4",
+    "webpack-dev-server": "^5.0.4"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

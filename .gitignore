@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.DS_Store
+*.log
+.env
+.env.local
+skills/personal/
+matters-extra.json
+uploads/
+msj-sections/
+precedent-docs/
