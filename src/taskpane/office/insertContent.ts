@@ -81,6 +81,9 @@ function blocksToHtml(text: string): string {
 /** Content controls wrapping inserted drafts carry this tag prefix + the editPairId. */
 export const EDIT_PAIR_TAG_PREFIX = "suade-ep-";
 
+/** MSJ: the control's title carries which motion section this draft is, so runs can read live section text back. */
+export const MSJ_SECTION_TITLE_PREFIX = "suade-msj-section:";
+
 /**
  * Drafts containing any markdown construct go in as HTML, so formatting
  * renders as intended (hyperlinks, bold, lists) and no literal markdown
@@ -93,7 +96,12 @@ export const EDIT_PAIR_TAG_PREFIX = "suade-ep-";
  * find this exact text later -- however much the document around it has
  * changed -- and capture the lawyer's post-insert edits.
  */
-function insertBlocksAfterParagraph(paragraph: Word.Paragraph, text: string, editPairId: string | null): void {
+function insertBlocksAfterParagraph(
+  paragraph: Word.Paragraph,
+  text: string,
+  editPairId: string | null,
+  sectionType: string | null
+): void {
   let insertedRange: Word.Range;
 
   if (MD_ARTIFACT_RE.test(text)) {
@@ -116,7 +124,7 @@ function insertBlocksAfterParagraph(paragraph: Word.Paragraph, text: string, edi
   if (editPairId) {
     const control = insertedRange.insertContentControl();
     control.tag = `${EDIT_PAIR_TAG_PREFIX}${editPairId}`;
-    control.title = "Suade draft";
+    control.title = sectionType ? `${MSJ_SECTION_TITLE_PREFIX}${sectionType}` : "Suade draft";
     control.appearance = Word.ContentControlAppearance.hidden;
     control.cannotDelete = false;
     control.cannotEdit = false;
@@ -126,7 +134,8 @@ function insertBlocksAfterParagraph(paragraph: Word.Paragraph, text: string, edi
 export async function insertTextAtSectionEnd(
   section: DocumentSection,
   text: string,
-  editPairId: string | null = null
+  editPairId: string | null = null,
+  sectionType: string | null = null
 ): Promise<void> {
   return Word.run(async (context) => {
     context.document.load("changeTrackingMode");
@@ -143,7 +152,7 @@ export async function insertTextAtSectionEnd(
     context.document.changeTrackingMode = Word.ChangeTrackingMode.trackAll;
     await context.sync();
 
-    insertBlocksAfterParagraph(paragraphs.items[endIndex], text, editPairId);
+    insertBlocksAfterParagraph(paragraphs.items[endIndex], text, editPairId, sectionType);
 
     await context.sync();
 
@@ -158,7 +167,11 @@ export async function insertTextAtSectionEnd(
  * Paragraphs land after the paragraph the cursor sits in, as tracked
  * changes, using the same paragraph-splitting as section insertion.
  */
-export async function insertTextAtCursor(text: string, editPairId: string | null = null): Promise<void> {
+export async function insertTextAtCursor(
+  text: string,
+  editPairId: string | null = null,
+  sectionType: string | null = null
+): Promise<void> {
   return Word.run(async (context) => {
     context.document.load("changeTrackingMode");
     const selectionParagraphs = context.document.getSelection().paragraphs;
@@ -173,7 +186,7 @@ export async function insertTextAtCursor(text: string, editPairId: string | null
     context.document.changeTrackingMode = Word.ChangeTrackingMode.trackAll;
     await context.sync();
 
-    insertBlocksAfterParagraph(selectionParagraphs.items[selectionParagraphs.items.length - 1], text, editPairId);
+    insertBlocksAfterParagraph(selectionParagraphs.items[selectionParagraphs.items.length - 1], text, editPairId, sectionType);
 
     await context.sync();
 

@@ -51,7 +51,7 @@ Matter detection/intake, PDF/DOCX/MSG upload, hosted originals: unchanged from S
 
 ### 4.3 Sequential section Skills & cross-section context — [Built]
 - Six-section structure via the existing run lifecycle; request carries `sectionType`.
-- Every section run's prompt includes: case documents, the style profile (if any), and the latest clean drafts of all other completed sections — regardless of run order — with an explicit consistency instruction (claim names, party labels, defined terms).
+- Every section run's prompt includes: case documents, the style profile (if any), and the latest text of all other completed sections — regardless of run order — with an explicit consistency instruction (claim names, party labels, defined terms). **Live-document precedence (17 Jul):** because the lawyer edits inserted drafts in Word, the pane reads each inserted section's CURRENT text from its wrapping content control at run time and that supersedes the stored model draft (trace and working notes label each context source as live-from-document vs stored). Sections existing only in the document are still included; sections drafted but never inserted fall back to the stored draft. Inserts made before 17 Jul lack the section-typed control and re-use stored drafts until re-inserted; sections hand-written in Word without Suade remain invisible to context.
 - Ordering is advisory: the pane recommends the canonical sequence and shows a non-blocking warning when upstream sections are undrafted.
 - Re-running a section does not auto-re-run downstream sections; the rail flags each section drafted against a now-superseded upstream version (`stale`), computed live from recorded context versions. Re-run decisions stay with the lawyer.
 

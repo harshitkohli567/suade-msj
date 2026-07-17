@@ -153,18 +153,44 @@ function readStyleProfile(matterId) {
 /**
  * Every drafted section a run should see, EXCLUDING the section being run
  * (a re-run must not treat its own prior draft as context to align with).
+ *
+ * The lawyer's workflow is insert-then-edit-in-Word, so the pane sends
+ * liveTexts: the CURRENT text of each inserted section read from the
+ * document's content controls at run time. Live text supersedes the
+ * stored model draft; a section that exists only in the document (e.g.
+ * state wiped, or inserted from another machine) is still included.
  */
-function priorSectionDraftsFor(matterId, exceptSectionType) {
+function priorSectionDraftsFor(matterId, exceptSectionType, liveTexts = {}) {
   const state = readMsjSections(matterId);
-  return MSJ_SECTION_ORDER.filter(
-    (t) => t !== exceptSectionType && state.sections[t] && state.sections[t].cleanDraft
-  ).map((t) => ({
-    sectionType: t,
-    displayName: MSJ_SECTION_NAMES[t],
-    version: state.sections[t].draftVersion,
-    updatedAt: state.sections[t].updatedAt,
-    cleanDraft: state.sections[t].cleanDraft,
-  }));
+  const drafts = [];
+  for (const t of MSJ_SECTION_ORDER) {
+    if (t === exceptSectionType) continue;
+    const record = state.sections[t];
+    const live =
+      liveTexts && typeof liveTexts[t] === "string" && liveTexts[t].trim()
+        ? liveTexts[t].trim().slice(0, 60000)
+        : null;
+    if (live) {
+      drafts.push({
+        sectionType: t,
+        displayName: MSJ_SECTION_NAMES[t],
+        version: record ? record.draftVersion : 0,
+        updatedAt: record ? record.updatedAt : null,
+        cleanDraft: live,
+        source: "document",
+      });
+    } else if (record && record.cleanDraft) {
+      drafts.push({
+        sectionType: t,
+        displayName: MSJ_SECTION_NAMES[t],
+        version: record.draftVersion,
+        updatedAt: record.updatedAt,
+        cleanDraft: record.cleanDraft,
+        source: "stored",
+      });
+    }
+  }
+  return drafts;
 }
 
 function workingNotesDirFor(matterId) {
@@ -641,7 +667,7 @@ function ensurePersonalCopy(lawyerId, skillId) {
 
 app.post("/api/run-skill", (req, res) => {
   try {
-    const { skillId, sourceFile, matter, section, uploadedDocuments, message, lawyerId, sectionType } = req.body;
+    const { skillId, sourceFile, matter, section, uploadedDocuments, message, lawyerId, sectionType, liveSectionTexts } = req.body;
 
     if (sectionType && !MSJ_SECTION_ORDER.includes(sectionType)) {
       return res.status(400).json({ error: `Unknown sectionType: ${sectionType}` });
@@ -683,13 +709,15 @@ app.post("/api/run-skill", (req, res) => {
     // profile for section runs on a resolved matter.
     let msjContext = null;
     if (sectionType && matter && matter.matterId) {
-      const priorDrafts = priorSectionDraftsFor(matter.matterId, sectionType);
+      const priorDrafts = priorSectionDraftsFor(matter.matterId, sectionType, liveSectionTexts);
       const style = readStyleProfile(matter.matterId);
       msjContext = { sectionType, priorDrafts, styleProfile: style };
       addTrace(
         runId,
         priorDrafts.length > 0
-          ? `Prior-section context: ${priorDrafts.map((d) => `${d.displayName} (v${d.version})`).join(", ")}`
+          ? `Prior-section context: ${priorDrafts
+              .map((d) => `${d.displayName} (${d.source === "document" ? "live from document" : `stored draft v${d.version}`})`)
+              .join(", ")}`
           : "No prior sections drafted yet -- running without cross-section context"
       );
       addTrace(runId, style ? `Style profile applied (from ${style.meta.filename})` : "No style profile -- Skill default voice");
@@ -828,7 +856,13 @@ async function executeSkillRun(runId, { skillId, skillInstructions, matter, sect
     if (msjContext && workingNotes) {
       const contextLines =
         msjContext.priorDrafts.length > 0
-          ? msjContext.priorDrafts.map((d) => `- ${d.displayName} — draft v${d.version} (${d.updatedAt})`).join("\n")
+          ? msjContext.priorDrafts
+              .map((d) =>
+                d.source === "document"
+                  ? `- ${d.displayName} — live text from the document at run time`
+                  : `- ${d.displayName} — stored draft v${d.version} (${d.updatedAt})`
+              )
+              .join("\n")
           : "- (no prior sections were drafted when this run started)";
       const styleLine = msjContext.styleProfile
         ? `- Style profile: applied (from ${msjContext.styleProfile.meta.filename})`
@@ -894,6 +928,7 @@ async function executeSkillRun(runId, { skillId, skillInstructions, matter, sect
           sectionType: d.sectionType,
           version: d.version,
           updatedAt: d.updatedAt,
+          source: d.source,
         })),
       };
       writeMsjSections(matter.matterId, state);
@@ -1662,7 +1697,12 @@ function buildPrompt({ skillInstructions, matter, section, uploadedDocuments, me
 
   if (msjContext && msjContext.priorDrafts.length > 0) {
     const drafts = msjContext.priorDrafts
-      .map((d) => `## ${d.displayName} (draft v${d.version}, ${d.updatedAt})\n\n${d.cleanDraft}`)
+      .map(
+        (d) =>
+          `## ${d.displayName} (${
+            d.source === "document" ? "current text from the Word document, including the lawyer's edits" : `stored draft v${d.version}, ${d.updatedAt}`
+          })\n\n${d.cleanDraft}`
+      )
       .join("\n\n");
     parts.push(
       `# Previously Drafted Sections of This Motion\n\nThese sections have already been drafted. ` +

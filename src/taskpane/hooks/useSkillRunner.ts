@@ -13,6 +13,7 @@ interface RunArgs {
   uploadedDocuments: UploadedDocumentRecord[];
   message: string;
   sectionType: string | null;
+  liveSectionTexts: Record<string, string>;
 }
 
 export interface TraceEntry {
@@ -82,6 +83,7 @@ export function useSkillRunner() {
           message: args.message,
           lawyerId: LAWYER_ID,
           sectionType: args.sectionType,
+          liveSectionTexts: args.liveSectionTexts,
         }),
       });
 

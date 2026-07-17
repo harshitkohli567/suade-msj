@@ -13,6 +13,7 @@ import { useMsjSections } from "./hooks/useMsjSections";
 import { sectionTypeForSkillId, MSJ_SECTION_NAMES } from "@/data/skills/registry";
 import { BACKEND_URL } from "./config";
 import { useEditPairSweep } from "./hooks/useEditPairSweep";
+import { readLiveSectionTexts } from "./office/readLiveSections";
 import UploadProgress from "./UploadProgress";
 
 interface RunMeta {
@@ -123,7 +124,7 @@ const SkillRunnerSection: React.FC<SkillRunnerSectionProps> = ({
     ? msj.sections.filter((sec) => sec.order < selectedSectionInfo.order && sec.status === "not_started")
     : [];
 
-  const handleRun = () => {
+  const handleRun = async () => {
     // Snapshot any edits made in Word since the last sweep before the
     // next run changes what's on screen. Fire-and-forget.
     void editPairSweep.sweepNow();
@@ -149,7 +150,21 @@ const SkillRunnerSection: React.FC<SkillRunnerSectionProps> = ({
       sectionType: selectedSectionType,
       documentIds: uploadedDocuments.map((d) => d.documentId),
     });
-    run({ skill: selectedSkill, matter, activeSection, uploadedDocuments, message, sectionType: selectedSectionType });
+
+    // Prior-section context must reflect the document as it stands NOW --
+    // the lawyer edits inserted drafts in Word, so live section text (read
+    // from the wrapping content controls) supersedes the stored drafts.
+    const liveSectionTexts = selectedSectionType && matter ? await readLiveSectionTexts() : {};
+
+    run({
+      skill: selectedSkill,
+      matter,
+      activeSection,
+      uploadedDocuments,
+      message,
+      sectionType: selectedSectionType,
+      liveSectionTexts,
+    });
   };
 
   const handleUploadFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -173,10 +188,10 @@ const SkillRunnerSection: React.FC<SkillRunnerSectionProps> = ({
       // Section end when we know where we are; cursor fallback otherwise
       // (e.g. a blank document during intake has no sections yet).
       if (activeSection) {
-        await insertTextAtSectionEnd(activeSection, editedOutput, editPairId);
+        await insertTextAtSectionEnd(activeSection, editedOutput, editPairId, lastRunMeta ? lastRunMeta.sectionType : null);
         setInsertTarget(`at the end of section ${activeSection.sectionId}`);
       } else {
-        await insertTextAtCursor(editedOutput, editPairId);
+        await insertTextAtCursor(editedOutput, editPairId, lastRunMeta ? lastRunMeta.sectionType : null);
         setInsertTarget("at the cursor position");
       }
       setInsertState("done");
