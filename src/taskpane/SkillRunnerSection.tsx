@@ -365,6 +365,16 @@ const SkillRunnerSection: React.FC<SkillRunnerSectionProps> = ({
 
   return (
     <div>
+      {!matter && (
+        <div style={styles.coachManualReview}>
+          <span style={styles.coachManualReviewText}>
+            Start or detect a matter above first — the six motion sections, working notes, and
+            voice calibration (tone/style from a precedent brief) appear here once a matter is
+            active.
+          </span>
+        </div>
+      )}
+
       {matter && (
         <>
           <MsjPanel
